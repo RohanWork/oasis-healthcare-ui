@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { userAPI } from '../services/userAPI';
 import { roleAPI } from '../services/roleAPI';
 import { organizationAPI } from '../services/organizationAPI';
@@ -11,10 +12,12 @@ const UserForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
+  const { hasRole, selectedOrganization } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState([]);
   const [organizations, setOrganizations] = useState([]);
+  const isSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -47,6 +50,7 @@ const UserForm = () => {
     if (isEditMode) {
       loadUser();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadRoles = async () => {
@@ -60,10 +64,29 @@ const UserForm = () => {
 
   const loadOrganizations = async () => {
     try {
-      const response = await organizationAPI.getAll();
+      let response;
+      if (isSystemAdmin) {
+        // SYSTEM_ADMIN can see all organizations
+        response = await organizationAPI.getAll();
+      } else {
+        // ORG_ADMIN can only see their own organization
+        response = await organizationAPI.getMyOrganizations();
+      }
       setOrganizations(response.data || []);
+      
+      // For ORG_ADMIN creating a new user, automatically set the organization
+      if (!isEditMode && !isSystemAdmin && selectedOrganization && response.data?.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          organizationIds: [selectedOrganization.id]
+        }));
+      }
     } catch (error) {
       console.error('Error loading organizations:', error);
+      // Don't show error toast if it's just a permission issue for non-SYSTEM_ADMIN
+      if (isSystemAdmin || error.response?.status !== 403) {
+        toast.error('Failed to load organizations');
+      }
     }
   };
 
@@ -396,18 +419,23 @@ const UserForm = () => {
               </div>
             </div>
             <div className="form-group full-width">
-              <label>Organizations</label>
+              <label>Organizations {!isSystemAdmin && !isEditMode && '(Auto-assigned to your organization)'}</label>
               <div className="multi-select-container">
-                {organizations.map(org => (
-                  <label key={org.id} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={formData.organizationIds.includes(org.id)}
-                      onChange={() => handleMultiSelect('organizationIds', org.id)}
-                    />
-                    <span>{org.organizationName}</span>
-                  </label>
-                ))}
+                {organizations.length > 0 ? (
+                  organizations.map(org => (
+                    <label key={org.id} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={formData.organizationIds.includes(org.id)}
+                        onChange={() => handleMultiSelect('organizationIds', org.id)}
+                        disabled={!isSystemAdmin && !isEditMode} // Disable for ORG_ADMIN creating new user
+                      />
+                      <span>{org.organizationName}</span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-muted">No organizations available</p>
+                )}
               </div>
             </div>
           </div>

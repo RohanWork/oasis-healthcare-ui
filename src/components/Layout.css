@@ -15,9 +15,20 @@
 
 @media (min-width: 1024px) {
   .page-content {
-    margin-left: 260px;
     padding: 32px;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+  }
+  
+  /* Only add left margin when sidebar is open */
+  body.sidebar-open .page-content {
+    margin-left: 260px;
     width: calc(100% - 260px);
+  }
+  
+  /* When sidebar is closed, content takes full width */
+  body:not(.sidebar-open) .page-content {
+    margin-left: 0;
+    width: 100%;
   }
 }
 
