@@ -65,6 +65,14 @@ export const taskAPI = {
   
   start: (id) => 
     api.put(`${TASK_BASE_URL}/${id}/start`),
+
+  // QA Review
+  getPendingQAReview: () => api.get(`${TASK_BASE_URL}/qa/pending`),
+  approveTask: (id) => api.put(`${TASK_BASE_URL}/${id}/qa/approve`),
+  rejectTask: (id, reason) => 
+    api.put(`${TASK_BASE_URL}/${id}/qa/reject`, null, {
+      params: { reason }
+    }),
 };
 
 export default taskAPI;

@@ -14,7 +14,10 @@ import {
   Menu,
   X,
   ChevronLeft,
-  ClipboardList
+  ClipboardList,
+  ChevronDown,
+  Settings,
+  BarChart3
 } from 'lucide-react';
 import './Navigation.css';
 
@@ -26,16 +29,20 @@ const Navigation = () => {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     return window.innerWidth >= 1024;
   });
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   // Declare role checks first
-  const isSystemAdmin = hasRole('SYSTEM_ADMIN');
-  const isOrgAdmin = hasRole('ORG_ADMIN');
-  const isRN = hasRole('RN');
+  const isSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || hasRole('SYSTEM_ADMIN');
+  const isOrgAdmin = hasRole('ROLE_ORG_ADMIN') || hasRole('ORG_ADMIN');
+  const isRN = hasRole('ROLE_RN') || hasRole('RN');
+  const isIntakeCoordinator = hasRole('ROLE_INTAKE_COORDINATOR') || hasRole('INTAKE_COORDINATOR');
+  const isQANurse = hasRole('ROLE_QA_NURSE') || hasRole('QA_NURSE');
+  const isClinicalManager = hasRole('ROLE_CLINICAL_MANAGER') || hasRole('CLINICAL_MANAGER');
 
-  // Update body class when sidebar state changes (not for RN role)
+  // Update body class when sidebar state changes (not for RN or Intake Coordinator roles)
   useEffect(() => {
-    if (isRN) {
-      // RN role doesn't have sidebar, so always remove the class
+    if (isRN || isIntakeCoordinator) {
+      // RN and Intake Coordinator roles don't have sidebar, so always remove the class
       document.body.classList.remove('sidebar-open');
       return;
     }
@@ -48,28 +55,61 @@ const Navigation = () => {
     return () => {
       document.body.classList.remove('sidebar-open');
     };
-  }, [sidebarOpen, isRN]);
+  }, [sidebarOpen, isRN, isIntakeCoordinator]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
   
-  // Navbar items for SYSTEM_ADMIN, ORG_ADMIN, and RN
+  // Navbar items for SYSTEM_ADMIN, ORG_ADMIN, RN, and Intake Coordinator
   const navbarItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       path: '/dashboard',
       icon: Home,
-      available: isSystemAdmin || isOrgAdmin || isRN,
+      available: isSystemAdmin || isOrgAdmin || isRN || isIntakeCoordinator,
     },
     {
       id: 'patients',
       label: 'Patients',
       path: '/patients',
       icon: Users,
-      available: isOrgAdmin || isRN,
+      available: isOrgAdmin || isRN || isIntakeCoordinator,
+      hasDropdown: isIntakeCoordinator,
+      dropdownItems: isIntakeCoordinator ? [
+        { id: 'patient-management', label: 'Patient Management', path: '/patients' },
+        { id: 'referral-management', label: 'Referral Management', path: '/referrals' },
+      ] : null,
+    },
+    {
+      id: 'schedule',
+      label: 'Schedule',
+      path: '/schedule-center',
+      icon: Calendar,
+      available: isIntakeCoordinator,
+    },
+    {
+      id: 'billing',
+      label: 'Billing',
+      path: '/billing/claims',
+      icon: DollarSign,
+      available: isOrgAdmin || isIntakeCoordinator,
+    },
+    {
+      id: 'admin',
+      label: 'Admin',
+      path: '/users',
+      icon: Settings,
+      available: isIntakeCoordinator,
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      path: '/reports',
+      icon: BarChart3,
+      available: isIntakeCoordinator,
     },
     {
       id: 'schedule-center',
@@ -83,14 +123,7 @@ const Navigation = () => {
       label: 'QA Review',
       path: '/qa-review',
       icon: Shield,
-      available: isOrgAdmin,
-    },
-    {
-      id: 'billing',
-      label: 'Billing',
-      path: '/billing/claims',
-      icon: DollarSign,
-      available: isOrgAdmin,
+      available: isOrgAdmin || isQANurse || isClinicalManager,
     },
   ].filter(item => item.available);
   
@@ -123,7 +156,7 @@ const Navigation = () => {
       label: 'Plan of Care',
       path: '/plan-of-care',
       icon: ClipboardList,
-      available: !isSystemAdmin && !isOrgAdmin && (hasPermission('POC_READ') || hasRole('ORG_ADMIN')),
+      available: !isSystemAdmin && !isOrgAdmin && (hasPermission('POC_READ') || hasRole('ORG_ADMIN') || isRN),
     },
     {
       id: 'tasks',
@@ -151,7 +184,7 @@ const Navigation = () => {
       label: 'QA Review',
       path: '/qa-review',
       icon: Shield,
-      available: !isSystemAdmin && !isOrgAdmin && (hasPermission('OASIS_APPROVE') || hasPermission('VISIT_APPROVE') || hasRole('ORG_ADMIN') || hasRole('CLINICAL_MANAGER') || hasRole('QA_NURSE')),
+      available: !isSystemAdmin && !isOrgAdmin && !isRN && (hasPermission('OASIS_APPROVE') || hasPermission('VISIT_APPROVE') || isOrgAdmin || isClinicalManager || isQANurse),
     },
     {
       id: 'billing',
@@ -182,8 +215,8 @@ const Navigation = () => {
       <nav className="top-navbar">
         <div className="navbar-content">
           <div className="navbar-left">
-            {/* Hide menu toggle for RN role (no sidebar) */}
-            {!isRN && (
+            {/* Hide menu toggle for RN and Intake Coordinator roles (no sidebar) */}
+            {!isRN && !isIntakeCoordinator && (
               <button 
                 className="menu-toggle"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -196,19 +229,62 @@ const Navigation = () => {
               <FileText size={24} className="logo-icon" />
               <span className="logo-text">OASIS</span>
             </div>
-            {/* Navbar items for SYSTEM_ADMIN, ORG_ADMIN, and RN */}
+            {/* Navbar items for SYSTEM_ADMIN, ORG_ADMIN, RN, and Intake Coordinator */}
             {navbarItems.map((item) => (
-              <button
-                key={item.id}
-                className={`navbar-btn ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => navigate(item.path)}
-                title={item.label}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </button>
+              item.hasDropdown ? (
+                <div 
+                  key={item.id} 
+                  className="navbar-dropdown"
+                  onMouseEnter={() => setOpenDropdown(item.id)}
+                  onMouseLeave={() => setOpenDropdown(null)}
+                >
+                  <button
+                    className={`navbar-btn ${isActive(item.path) || (item.dropdownItems && item.dropdownItems.some(di => isActive(di.path))) ? 'active' : ''}`}
+                    title={item.label}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setOpenDropdown(openDropdown === item.id ? null : item.id);
+                    }}
+                  >
+                    <item.icon size={18} />
+                    <span>{item.label}</span>
+                    <ChevronDown size={14} />
+                  </button>
+                  {openDropdown === item.id && item.dropdownItems && (
+                    <div 
+                      className="navbar-dropdown-menu"
+                      onMouseEnter={() => setOpenDropdown(item.id)}
+                      onMouseLeave={() => setOpenDropdown(null)}
+                    >
+                      {item.dropdownItems.map((dropdownItem) => (
+                        <button
+                          key={dropdownItem.id}
+                          className={`navbar-dropdown-item ${isActive(dropdownItem.path) ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(dropdownItem.path);
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          {dropdownItem.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  key={item.id}
+                  className={`navbar-btn ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => navigate(item.path)}
+                  title={item.label}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+              )
             ))}
-            {!isSystemAdmin && !isOrgAdmin && !isRN && (
+            {!isSystemAdmin && !isOrgAdmin && !isRN && !isIntakeCoordinator && (
               <div className="navbar-org">
                 <Building2 size={16} />
                 <span>{selectedOrganization?.organizationName || 'No Organization'}</span>
@@ -233,8 +309,8 @@ const Navigation = () => {
         </div>
       </nav>
 
-      {/* Sidebar Navigation - Hidden for RN role */}
-      {!isRN && (
+      {/* Sidebar Navigation - Hidden for RN and Intake Coordinator roles */}
+      {!isRN && !isIntakeCoordinator && (
         <>
           <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
             <div className="sidebar-header">

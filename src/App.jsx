@@ -34,6 +34,10 @@ import BillingClaimList from './pages/BillingClaimList';
 import BillingClaimForm from './pages/BillingClaimForm';
 import BillingClaimDetail from './pages/BillingClaimDetail';
 import EpisodeDetail from './pages/EpisodeDetail';
+import ReferralList from './pages/ReferralList';
+import ReferralForm from './pages/ReferralForm';
+import ReferralDetail from './pages/ReferralDetail';
+import Reports from './pages/Reports';
 
 function App() {
   return (
@@ -85,6 +89,40 @@ function App() {
             element={
               <ProtectedRoute showBackButton backPath="/patients" backLabel="Back to Patients">
                 <PatientForm />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Referral Routes */}
+          <Route 
+            path="/referrals" 
+            element={
+              <ProtectedRoute>
+                <ReferralList />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/referrals/new" 
+            element={
+              <ProtectedRoute showBackButton backPath="/referrals" backLabel="Back to Referrals">
+                <ReferralForm />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/referrals/:id" 
+            element={
+              <ProtectedRoute showBackButton backPath="/referrals" backLabel="Back to Referrals">
+                <ReferralDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/referrals/:id/edit" 
+            element={
+              <ProtectedRoute showBackButton backPath="/referrals" backLabel="Back to Referrals">
+                <ReferralForm />
               </ProtectedRoute>
             } 
           />
@@ -377,6 +415,16 @@ function App() {
             element={
               <ProtectedRoute showBackButton backPath="/dashboard" backLabel="Back">
                 <EpisodeDetail />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Reports Routes */}
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />

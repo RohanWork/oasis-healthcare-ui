@@ -12,12 +12,14 @@ const UserForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
-  const { hasRole, selectedOrganization } = useAuth();
+  const { hasRole, selectedOrganization, user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState([]);
   const [organizations, setOrganizations] = useState([]);
-  const isSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN');
+  // Check if current user is SYSTEM_ADMIN - verify role from user object
+  const isSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || 
+    user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -53,6 +55,22 @@ const UserForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Clear organizationIds if SYSTEM_ADMIN is creating a new user (prevent auto-assignment)
+  useEffect(() => {
+    if (!isEditMode && user) {
+      const userIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || 
+        user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN');
+      if (userIsSystemAdmin && formData.organizationIds.length > 0) {
+        // Clear any auto-assigned organizations for SYSTEM_ADMIN
+        setFormData(prev => ({
+          ...prev,
+          organizationIds: []
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isEditMode]);
+
   const loadRoles = async () => {
     try {
       const response = await roleAPI.getAll();
@@ -65,26 +83,64 @@ const UserForm = () => {
   const loadOrganizations = async () => {
     try {
       let response;
-      if (isSystemAdmin) {
-        // SYSTEM_ADMIN can see all organizations
-        response = await organizationAPI.getAll();
-      } else {
-        // ORG_ADMIN can only see their own organization
-        response = await organizationAPI.getMyOrganizations();
-      }
-      setOrganizations(response.data || []);
+      // Double-check if user is SYSTEM_ADMIN - wait for user to be available
+      const userIsSystemAdmin = user && (hasRole('ROLE_SYSTEM_ADMIN') || 
+        user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN'));
       
-      // For ORG_ADMIN creating a new user, automatically set the organization
-      if (!isEditMode && !isSystemAdmin && selectedOrganization && response.data?.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          organizationIds: [selectedOrganization.id]
-        }));
+      if (userIsSystemAdmin) {
+        // SYSTEM_ADMIN can see all organizations - NO auto-assignment
+        response = await organizationAPI.getAll();
+        const orgs = response.data || [];
+        setOrganizations(orgs);
+        // Explicitly ensure organizationIds is empty for SYSTEM_ADMIN creating new users
+        if (!isEditMode) {
+          setFormData(prev => ({
+            ...prev,
+            organizationIds: [] // Clear any pre-existing values
+          }));
+        }
+      } else if (user) {
+        // Only auto-assign if user is loaded and confirmed to be ORG_ADMIN
+        // ORG_ADMIN can only see their own organization - auto-assign it
+        response = await organizationAPI.getMyOrganizations();
+        const orgs = response.data || [];
+        setOrganizations(orgs);
+        
+        // Auto-assign for ORG_ADMIN creating a new user
+        if (!isEditMode && orgs.length > 0) {
+          const orgToAssign = orgs[0] || selectedOrganization;
+          if (orgToAssign) {
+            setFormData(prev => ({
+              ...prev,
+              organizationIds: [orgToAssign.id]
+            }));
+          }
+        }
+      } else {
+        // User not loaded yet - just load organizations without auto-assigning
+        // Try SYSTEM_ADMIN endpoint first (will fail if not SYSTEM_ADMIN, then try ORG_ADMIN)
+        try {
+          response = await organizationAPI.getAll();
+          const orgs = response.data || [];
+          setOrganizations(orgs);
+          // Don't auto-assign until we know the user's role
+        } catch (sysAdminError) {
+          // If SYSTEM_ADMIN endpoint fails, try ORG_ADMIN endpoint
+          if (sysAdminError.response?.status === 403) {
+            response = await organizationAPI.getMyOrganizations();
+            const orgs = response.data || [];
+            setOrganizations(orgs);
+            // Don't auto-assign until user is confirmed
+          } else {
+            throw sysAdminError;
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
-      // Don't show error toast if it's just a permission issue for non-SYSTEM_ADMIN
-      if (isSystemAdmin || error.response?.status !== 403) {
+      const userIsSystemAdmin = user && (hasRole('ROLE_SYSTEM_ADMIN') || 
+        user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN'));
+      if (userIsSystemAdmin || error.response?.status !== 403) {
         toast.error('Failed to load organizations');
       }
     }
@@ -156,6 +212,17 @@ const UserForm = () => {
     if (!formData.lastName?.trim()) errors.push('Last name is required');
     if (!isEditMode && !formData.password?.trim()) errors.push('Password is required');
     if (formData.password && formData.password.length < 8) errors.push('Password must be at least 8 characters');
+    if (formData.roleIds.length === 0) errors.push('At least one role is required');
+    // For SYSTEM_ADMIN creating users, organization assignment is optional but recommended
+    // For ORG_ADMIN, organization is auto-assigned, so we don't need to validate
+    if (isSystemAdmin && formData.organizationIds.length === 0) {
+      // Check if any selected role requires organization (like ORG_ADMIN)
+      const selectedRoles = roles.filter(r => formData.roleIds.includes(r.id));
+      const requiresOrg = selectedRoles.some(r => r.roleName === 'ROLE_ORG_ADMIN');
+      if (requiresOrg) {
+        errors.push('Organization assignment is required for Organization Admin role');
+      }
+    }
     return errors;
   };
 
@@ -419,24 +486,85 @@ const UserForm = () => {
               </div>
             </div>
             <div className="form-group full-width">
-              <label>Organizations {!isSystemAdmin && !isEditMode && '(Auto-assigned to your organization)'}</label>
+              <label>
+                Organizations 
+                {(() => {
+                  const userIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || 
+                    user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN');
+                  if (!userIsSystemAdmin && !isEditMode) {
+                    return ' (Auto-assigned to your organization)';
+                  }
+                  if (userIsSystemAdmin && !isEditMode) {
+                    return <span style={{fontSize: '0.875rem', fontWeight: 'normal', color: '#6b7280'}}> * Required for Organization Admin role</span>;
+                  }
+                  return null;
+                })()}
+              </label>
               <div className="multi-select-container">
                 {organizations.length > 0 ? (
-                  organizations.map(org => (
-                    <label key={org.id} className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={formData.organizationIds.includes(org.id)}
-                        onChange={() => handleMultiSelect('organizationIds', org.id)}
-                        disabled={!isSystemAdmin && !isEditMode} // Disable for ORG_ADMIN creating new user
-                      />
-                      <span>{org.organizationName}</span>
-                    </label>
-                  ))
+                  organizations.map(org => {
+                    const isChecked = formData.organizationIds.includes(org.id);
+                    // Check if current user is SYSTEM_ADMIN
+                    const userIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || 
+                      user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN');
+                    // Only disable for ORG_ADMIN creating new users (not for SYSTEM_ADMIN)
+                    const isDisabled = !userIsSystemAdmin && !isEditMode;
+                    return (
+                      <label 
+                        key={org.id} 
+                        className="checkbox-label" 
+                        style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                        onClick={(e) => {
+                          // Prevent label click from triggering if disabled
+                          if (isDisabled) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            if (!isDisabled) {
+                              handleMultiSelect('organizationIds', org.id);
+                            }
+                          }}
+                          disabled={isDisabled}
+                          style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                        />
+                        <span>
+                          {org.organizationName}
+                          {!userIsSystemAdmin && !isEditMode && isChecked && (
+                            <span style={{fontSize: '0.75rem', color: '#6b7280', marginLeft: '8px'}}>(Auto-assigned)</span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })
                 ) : (
                   <p className="text-muted">No organizations available</p>
                 )}
               </div>
+              {(() => {
+                const userIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || 
+                  user?.roles?.some(r => r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN');
+                if (!userIsSystemAdmin && !isEditMode && formData.organizationIds.length > 0) {
+                  return (
+                    <p style={{fontSize: '0.75rem', color: '#6b7280', marginTop: '4px'}}>
+                      As an Organization Admin, users are automatically assigned to your organization.
+                    </p>
+                  );
+                }
+                if (userIsSystemAdmin && !isEditMode) {
+                  return (
+                    <p style={{fontSize: '0.75rem', color: '#6b7280', marginTop: '4px'}}>
+                      Select one or more organizations to assign to this user. Organization Admin role requires at least one organization.
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>

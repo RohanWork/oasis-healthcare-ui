@@ -8,8 +8,11 @@ import {
   submitOasisForQA,
   getOasisAssessmentsByPatient
 } from '../services/oasisAPI';
-import { patientAPI } from '../services/patientAPI';
+import { patientAPI, episodeAPI } from '../services/patientAPI';
+import { planOfCareAPI } from '../services/planOfCareAPI';
+import { Shield, X, Plus, Trash2 } from 'lucide-react';
 import './OasisForm.css';
+import './OasisFormComplete.css'; // Import POC modal styles
 
 const OasisForm = () => {
   const { id, patientId } = useParams();
@@ -19,7 +22,52 @@ const OasisForm = () => {
   const [patient, setPatient] = useState(null);
   const [activeSection, setActiveSection] = useState('section1');
   const [lastSaved, setLastSaved] = useState(null);
+  const [assessmentStatus, setAssessmentStatus] = useState(null); // Track assessment status
+  const [qaComments, setQaComments] = useState(null); // QA comments for REJECTED assessments
+  const [reviewedBy, setReviewedBy] = useState(null); // QA reviewer name
+  const [reviewedAt, setReviewedAt] = useState(null); // QA review date
   const autoSaveTimerRef = useRef(null);
+  
+  // POC Modal state
+  const [showPOCModal, setShowPOCModal] = useState(false);
+  const [pocFormData, setPocFormData] = useState({
+    patientId: patientId ? parseInt(patientId) : null,
+    episodeId: null,
+    oasisAssessmentId: null,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    certificationPeriodDays: 60,
+    primaryDiagnosisCode: '',
+    primaryDiagnosisDescription: '',
+    secondaryDiagnosisCode: '',
+    secondaryDiagnosisDescription: '',
+    otherDiagnoses: '',
+    functionalLimitations: '',
+    safetyMeasures: '',
+    nutritionalRequirements: '',
+    medicationList: '',
+    medicationManagementNeeded: false,
+    status: 'DRAFT',
+    statusReason: '',
+    physicianName: '',
+    physicianPhone: '',
+    physicianSignatureRequired: false,
+    physicianSignedDate: '',
+    physicianSignatureObtained: false,
+    specialInstructions: '',
+    dmeEquipment: '',
+    notes: '',
+    frequencies: [],
+    interventions: [],
+    goals: [],
+    physicianOrders: [],
+  });
+  const [pocPatients, setPocPatients] = useState([]);
+  const [pocEpisodes, setPocEpisodes] = useState([]);
+  const [submittingPOC, setSubmittingPOC] = useState(false);
+  
+  // Check if assessment is read-only
+  const isReadOnly = assessmentStatus === 'APPROVED' || assessmentStatus === 'COMPLETED' || assessmentStatus === 'LOCKED';
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -574,23 +622,51 @@ const OasisForm = () => {
           }
           setFormData(normalizedData);
           setLastSaved(assessmentData.lastAutoSaved);
+          
+          // Store assessment status for read-only mode
+          if (assessmentData.status) {
+            setAssessmentStatus(assessmentData.status);
+          }
+          
+          // Store QA comments and review info for REJECTED assessments
+          if (assessmentData.qaComments) {
+            setQaComments(assessmentData.qaComments);
+          }
+          if (assessmentData.reviewedByName) {
+            setReviewedBy(assessmentData.reviewedByName);
+          }
+          if (assessmentData.reviewedAt) {
+            setReviewedAt(assessmentData.reviewedAt);
+          }
         } else {
-          // No ID provided - check if there's an existing DRAFT assessment for this patient
+          // No ID provided - check if there's an existing assessment for this patient
           try {
             const assessments = await getOasisAssessmentsByPatient(patientId);
-            // Find the most recent DRAFT assessment
-            const draftAssessment = assessments
-              .filter(a => a.status === 'DRAFT')
-              .sort((a, b) => {
-                const dateA = new Date(a.lastAutoSaved || a.createdAt || 0);
-                const dateB = new Date(b.lastAutoSaved || b.createdAt || 0);
-                return dateB - dateA;
-              })[0];
             
-            if (draftAssessment) {
-              // Redirect to edit the existing draft assessment
-              console.log('Found existing draft assessment, redirecting to edit:', draftAssessment.id);
-              navigate(`/oasis/edit/${draftAssessment.id}/${patientId}`, { replace: true });
+            // Priority: DRAFT > SUBMITTED > APPROVED > REJECTED (most recent first)
+            const sortedAssessments = assessments.sort((a, b) => {
+              const dateA = new Date(a.lastAutoSaved || a.submittedAt || a.createdAt || 0);
+              const dateB = new Date(b.lastAutoSaved || b.submittedAt || b.createdAt || 0);
+              return dateB - dateA;
+            });
+            
+            // Find the most recent assessment that can be edited (DRAFT or REJECTED)
+            const editableAssessment = sortedAssessments.find(a => 
+              a.status === 'DRAFT' || a.status === 'REJECTED'
+            );
+            
+            if (editableAssessment) {
+              // Redirect to edit the existing editable assessment
+              console.log('Found existing editable assessment, redirecting to edit:', editableAssessment.id, editableAssessment.status);
+              navigate(`/oasis/edit/${editableAssessment.id}/${patientId}`, { replace: true });
+              return;
+            }
+            
+            // If no editable assessment, check for most recent assessment (for viewing)
+            const mostRecentAssessment = sortedAssessments[0];
+            if (mostRecentAssessment) {
+              console.log('Found existing assessment (read-only), redirecting to view:', mostRecentAssessment.id, mostRecentAssessment.status);
+              navigate(`/oasis/edit/${mostRecentAssessment.id}/${patientId}`, { replace: true });
               return;
             }
           } catch (error) {
@@ -609,9 +685,9 @@ const OasisForm = () => {
     loadData();
   }, [id, patientId, navigate]);
 
-  // Auto-save timer (15 seconds)
+  // Auto-save timer (15 seconds) - only for editable assessments
   useEffect(() => {
-    if (id && !loading) {
+    if (id && !loading && !isReadOnly) {
       autoSaveTimerRef.current = setInterval(() => {
         handleAutoSave();
       }, 15000); // 15 seconds
@@ -685,7 +761,7 @@ const OasisForm = () => {
     }
   };
 
-  // Submit for QA
+  // Submit for QA - show POC modal first
   const handleSubmit = async () => {
     if (!id) {
       alert('Please save the assessment first');
@@ -697,37 +773,174 @@ const OasisForm = () => {
       alert(`Assessment is only ${completion}% complete. Please complete all required fields before submitting.`);
       return;
     }
-    
-    if (window.confirm('Are you sure you want to submit this assessment for QA review?')) {
-      try {
-        // Save the assessment first to ensure completion percentage is updated
-        const requestData = prepareRequestData(formData);
-        await updateOasisAssessment(id, requestData);
-        
-        // Then submit for QA
-        await submitOasisForQA(id);
-        alert('Assessment submitted for QA review successfully!');
-        navigate('/oasis/list');
-      } catch (error) {
-        console.error('Error submitting assessment:', error);
-        console.error('Full error response:', JSON.stringify(error.response?.data, null, 2));
-        
-        let errorMessage = 'Error submitting assessment';
-        if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response?.data?.error) {
-          errorMessage = `${error.response.data.error}: ${error.response.data.message || 'Validation failed'}`;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        alert(errorMessage);
+
+    // Pre-populate POC form with OASIS data
+    setPocFormData(prev => ({
+      ...prev,
+      patientId: formData.patientId || patientId,
+      episodeId: prev.episodeId,
+      oasisAssessmentId: id ? parseInt(id) : null,
+      primaryDiagnosisCode: formData.m1021PrimaryDiagnosisIcd || '',
+      primaryDiagnosisDescription: formData.m1021PrimaryDiagnosisDesc || '',
+      startDate: formData.assessmentDate || new Date().toISOString().split('T')[0],
+    }));
+
+    // Show POC creation modal
+    console.log('Opening POC modal for OASIS ID:', id);
+    setShowPOCModal(true);
+  };
+
+  // Load POC patients and episodes when modal opens
+  useEffect(() => {
+    if (showPOCModal) {
+      loadPOCPatients();
+      if (pocFormData.patientId) {
+        loadPOCEpisodes(pocFormData.patientId);
       }
     }
+  }, [showPOCModal]);
+
+  const loadPOCPatients = async () => {
+    try {
+      const response = await patientAPI.getAll();
+      setPocPatients(response.data || []);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+    }
+  };
+
+  const loadPOCEpisodes = async (patientId) => {
+    try {
+      const response = await episodeAPI.getByPatient(patientId);
+      setPocEpisodes(response.data || []);
+    } catch (error) {
+      console.error('Error loading episodes:', error);
+    }
+  };
+
+  // Handle POC form changes
+  const handlePOCChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setPocFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : (value === '' ? null : value)
+    }));
+
+    if (name === 'patientId' && value) {
+      loadPOCEpisodes(parseInt(value));
+    }
+  };
+
+  // Submit both OASIS and POC for QA
+  const handleSubmitOASISAndPOC = async () => {
+    if (!pocFormData.frequencies || pocFormData.frequencies.length === 0) {
+      alert('Please add at least one visit frequency to the Plan of Care.');
+      return;
+    }
+
+    try {
+      setSubmittingPOC(true);
+      const oasisId = id;
+
+      // Step 1: Save OASIS first (if needed)
+      const requestData = prepareRequestData(formData);
+      await updateOasisAssessment(oasisId, requestData);
+
+      // Step 2: Prepare POC data
+      const pocDataToSend = {
+        ...pocFormData,
+        patientId: typeof pocFormData.patientId === 'string' ? parseInt(pocFormData.patientId) : pocFormData.patientId,
+        episodeId: typeof pocFormData.episodeId === 'string' ? parseInt(pocFormData.episodeId) : pocFormData.episodeId,
+        oasisAssessmentId: oasisId ? parseInt(oasisId) : null,
+        status: 'DRAFT',
+        certificationPeriodDays: pocFormData.certificationPeriodDays ? parseInt(pocFormData.certificationPeriodDays) : 60,
+        frequencies: pocFormData.frequencies ? pocFormData.frequencies.map(freq => ({
+          ...freq,
+          visitsPerWeek: typeof freq.visitsPerWeek === 'string' ? parseInt(freq.visitsPerWeek) : freq.visitsPerWeek,
+          numberOfWeeks: typeof freq.numberOfWeeks === 'string' ? parseInt(freq.numberOfWeeks) : freq.numberOfWeeks,
+          totalVisits: typeof freq.totalVisits === 'string' ? parseInt(freq.totalVisits) : freq.totalVisits,
+          estimatedMinutesPerVisit: typeof freq.estimatedMinutesPerVisit === 'string' ? parseInt(freq.estimatedMinutesPerVisit) : freq.estimatedMinutesPerVisit,
+        })) : [],
+      };
+
+      // Step 3: Create POC
+      console.log('Creating POC...');
+      const createdPOC = await planOfCareAPI.create(pocDataToSend);
+      console.log('POC created with ID:', createdPOC.id);
+      
+      // Step 4: Submit POC for approval
+      console.log('Submitting POC for approval...');
+      await planOfCareAPI.submitForApproval(createdPOC.id);
+      console.log('POC submitted for approval');
+      
+      // Step 5: Submit OASIS for QA
+      console.log('Submitting OASIS for QA...');
+      await submitOasisForQA(oasisId);
+      console.log('OASIS submitted for QA');
+      
+      alert('OASIS and Plan of Care submitted successfully for QA review!');
+      setShowPOCModal(false);
+      navigate('/oasis/list');
+    } catch (error) {
+      console.error('Error submitting OASIS and POC:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      alert('Failed to submit: ' + errorMessage);
+    } finally {
+      setSubmittingPOC(false);
+    }
+  };
+
+  // Submit only OASIS (skip POC)
+  const handleSubmitOASISOnly = async () => {
+    if (!window.confirm('Submit OASIS without Plan of Care? You can create POC later.')) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const requestData = prepareRequestData(formData);
+      await updateOasisAssessment(id, requestData);
+      await submitOasisForQA(id);
+      alert('Assessment submitted for QA review!');
+      setShowPOCModal(false);
+      navigate('/oasis/list');
+    } catch (error) {
+      console.error('Error submitting for QA:', error);
+      alert('Failed to submit for QA: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // POC array helper functions
+  const handlePOCArrayChange = (arrayName, index, field, value) => {
+    setPocFormData(prev => {
+      const newArray = [...prev[arrayName]];
+      newArray[index] = { ...newArray[index], [field]: value === '' ? null : value };
+      return { ...prev, [arrayName]: newArray };
+    });
+  };
+
+  const addPOCArrayItem = (arrayName, defaultItem) => {
+    setPocFormData(prev => ({
+      ...prev,
+      [arrayName]: [...prev[arrayName], { ...defaultItem }]
+    }));
+  };
+
+  const removePOCArrayItem = (arrayName, index) => {
+    setPocFormData(prev => ({
+      ...prev,
+      [arrayName]: prev[arrayName].filter((_, i) => i !== index)
+    }));
   };
 
   // Handle input change
   const handleInputChange = (field, value) => {
+    // Prevent changes if read-only
+    if (isReadOnly) {
+      return;
+    }
     setFormData(prev => {
       // Normalize value: convert null/undefined to empty string
       const normalizedValue = (value === null || value === undefined) ? '' : value;
@@ -2274,6 +2487,27 @@ const OasisForm = () => {
       <div className="oasis-header">
         <div className="header-content">
           <h1>OASIS-E1 Assessment</h1>
+          {assessmentStatus && (
+            <span className={`status-badge status-${assessmentStatus.toLowerCase()}`} style={{
+              padding: '4px 12px',
+              borderRadius: '4px',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              marginLeft: '12px',
+              backgroundColor: assessmentStatus === 'APPROVED' || assessmentStatus === 'COMPLETED' ? '#10b981' : 
+                             assessmentStatus === 'SUBMITTED' ? '#3b82f6' :
+                             assessmentStatus === 'DRAFT' ? '#6b7280' :
+                             assessmentStatus === 'REJECTED' ? '#ef4444' : '#f59e0b',
+              color: 'white'
+            }}>
+              {assessmentStatus}
+            </span>
+          )}
+          {isReadOnly && (
+            <span style={{ marginLeft: '8px', color: '#6b7280', fontSize: '0.875rem' }}>
+              (Read-Only)
+            </span>
+          )}
           {patient && (
             <div className="patient-info">
               <strong>{patient.firstName} {patient.lastName}</strong>
@@ -2334,27 +2568,320 @@ const OasisForm = () => {
               Cancel
             </button>
             
-            <button 
-              type="button" 
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            
-            {id && (
-              <button 
-                type="button" 
-                className="btn btn-success"
-                onClick={handleSubmit}
-              >
-                Submit for QA
-              </button>
+            {!isReadOnly && (
+              <>
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+                
+                {id && assessmentStatus !== 'SUBMITTED' && assessmentStatus !== 'APPROVED' && (
+                  <button 
+                    type="button" 
+                    className="btn btn-success"
+                    onClick={handleSubmit}
+                    disabled={assessmentStatus === 'SUBMITTED'}
+                  >
+                    Submit for QA
+                  </button>
+                )}
+              </>
+            )}
+            {isReadOnly && (
+              <div style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', borderRadius: '4px', color: '#6b7280' }}>
+                This assessment is {assessmentStatus} and cannot be edited.
+              </div>
             )}
           </div>
+          
+          {/* QA Comments Section - Show for REJECTED assessments */}
+          {assessmentStatus === 'REJECTED' && qaComments && (
+            <div style={{
+              marginTop: '20px',
+              padding: '20px',
+              backgroundColor: '#fef2f2',
+              border: '2px solid #ef4444',
+              borderRadius: '8px',
+              borderLeft: '6px solid #ef4444'
+            }}>
+              <h3 style={{ 
+                color: '#dc2626', 
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Shield size={20} />
+                QA Review Comments - Returned for Correction
+              </h3>
+              {reviewedBy && (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '8px' }}>
+                  Reviewed by: <strong>{reviewedBy}</strong>
+                  {reviewedAt && ` on ${new Date(reviewedAt).toLocaleString()}`}
+                </p>
+              )}
+              <div style={{
+                padding: '12px',
+                backgroundColor: 'white',
+                borderRadius: '4px',
+                border: '1px solid #fecaca',
+                color: '#1f2937',
+                whiteSpace: 'pre-wrap',
+                lineHeight: '1.6'
+              }}>
+                {qaComments}
+              </div>
+              <p style={{ 
+                color: '#dc2626', 
+                fontSize: '0.875rem', 
+                marginTop: '12px',
+                fontStyle: 'italic'
+              }}>
+                Please review the comments above and make the necessary corrections before resubmitting.
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* POC Creation Modal */}
+      {showPOCModal && (
+        <div className="modal-overlay" onClick={() => setShowPOCModal(false)}>
+          <div className="modal-content poc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Create Plan of Care</h2>
+              <button className="modal-close" onClick={() => setShowPOCModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="modal-body poc-form-content">
+              <p className="poc-modal-info" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '5px', color: '#1976d2' }}>
+                <strong>📋 Plan of Care Required</strong><br />
+                Please complete the Plan of Care details below. Both OASIS and POC will be submitted together for QA review.
+              </p>
+
+              {/* Basic Information */}
+              <div className="form-section">
+                <h3>Basic Information</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Patient *</label>
+                    <select
+                      name="patientId"
+                      value={pocFormData.patientId || ''}
+                      onChange={handlePOCChange}
+                      required
+                    >
+                      <option value="">Select Patient</option>
+                      {pocPatients.map(patient => (
+                        <option key={patient.id} value={patient.id}>
+                          {patient.firstName} {patient.lastName} (DOB: {new Date(patient.dateOfBirth).toLocaleDateString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Episode *</label>
+                    <select
+                      name="episodeId"
+                      value={pocFormData.episodeId || ''}
+                      onChange={handlePOCChange}
+                      required
+                      disabled={!pocFormData.patientId}
+                    >
+                      <option value="">Select Episode</option>
+                      {pocEpisodes.map(episode => (
+                        <option key={episode.id} value={episode.id}>
+                          {episode.episodeNumber} - {episode.episodeType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Start Date *</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={pocFormData.startDate}
+                      onChange={handlePOCChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Certification Period (days)</label>
+                    <input
+                      type="number"
+                      name="certificationPeriodDays"
+                      value={pocFormData.certificationPeriodDays || 60}
+                      onChange={handlePOCChange}
+                      min="1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Diagnosis Information */}
+              <div className="form-section">
+                <h3>Diagnosis Information</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Primary Diagnosis Code</label>
+                    <input
+                      type="text"
+                      name="primaryDiagnosisCode"
+                      value={pocFormData.primaryDiagnosisCode || ''}
+                      onChange={handlePOCChange}
+                      placeholder="e.g., I10"
+                    />
+                  </div>
+                  <div className="form-group full-width">
+                    <label>Primary Diagnosis Description</label>
+                    <input
+                      type="text"
+                      name="primaryDiagnosisDescription"
+                      value={pocFormData.primaryDiagnosisDescription || ''}
+                      onChange={handlePOCChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Visit Frequencies */}
+              <div className="form-section">
+                <div className="section-header">
+                  <h3>Visit Frequencies *</h3>
+                  <button
+                    type="button"
+                    className="btn-add"
+                    onClick={() => addPOCArrayItem('frequencies', {
+                      disciplineType: 'RN',
+                      visitsPerWeek: null,
+                      numberOfWeeks: null,
+                      totalVisits: null,
+                      status: 'PLANNED',
+                      isActive: true,
+                    })}
+                  >
+                    <Plus size={18} />
+                    Add Frequency
+                  </button>
+                </div>
+                {pocFormData.frequencies.length === 0 && (
+                  <p className="form-hint">Please add at least one visit frequency</p>
+                )}
+                {pocFormData.frequencies.map((freq, index) => (
+                  <div key={index} className="array-item-card">
+                    <div className="array-item-header">
+                      <h4>Frequency #{index + 1}</h4>
+                      <button
+                        type="button"
+                        className="btn-remove"
+                        onClick={() => removePOCArrayItem('frequencies', index)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>Discipline *</label>
+                        <select
+                          value={freq.disciplineType || ''}
+                          onChange={(e) => handlePOCArrayChange('frequencies', index, 'disciplineType', e.target.value)}
+                          required
+                        >
+                          <option value="">Select</option>
+                          <option value="RN">RN</option>
+                          <option value="PT">PT</option>
+                          <option value="OT">OT</option>
+                          <option value="ST">ST</option>
+                          <option value="HHA">HHA</option>
+                          <option value="MSW">MSW</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Visits per Week *</label>
+                        <input
+                          type="number"
+                          value={freq.visitsPerWeek || ''}
+                          onChange={(e) => {
+                            handlePOCArrayChange('frequencies', index, 'visitsPerWeek', e.target.value);
+                            // Auto-calculate total visits
+                            const visitsPerWeek = parseInt(e.target.value) || 0;
+                            const numberOfWeeks = freq.numberOfWeeks || 0;
+                            if (visitsPerWeek && numberOfWeeks) {
+                              handlePOCArrayChange('frequencies', index, 'totalVisits', visitsPerWeek * numberOfWeeks);
+                            }
+                          }}
+                          min="1"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Number of Weeks *</label>
+                        <input
+                          type="number"
+                          value={freq.numberOfWeeks || ''}
+                          onChange={(e) => {
+                            handlePOCArrayChange('frequencies', index, 'numberOfWeeks', e.target.value);
+                            // Auto-calculate total visits
+                            const visitsPerWeek = freq.visitsPerWeek || 0;
+                            const numberOfWeeks = parseInt(e.target.value) || 0;
+                            if (visitsPerWeek && numberOfWeeks) {
+                              handlePOCArrayChange('frequencies', index, 'totalVisits', visitsPerWeek * numberOfWeeks);
+                            }
+                          }}
+                          min="1"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Total Visits</label>
+                        <input
+                          type="number"
+                          value={freq.totalVisits || ''}
+                          readOnly
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowPOCModal(false)}
+                disabled={submittingPOC}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-secondary" 
+                onClick={handleSubmitOASISOnly}
+                disabled={submittingPOC || saving}
+              >
+                Submit OASIS Only
+              </button>
+              <button 
+                className="btn-success" 
+                onClick={handleSubmitOASISAndPOC}
+                disabled={submittingPOC || saving || !pocFormData.frequencies || pocFormData.frequencies.length === 0}
+              >
+                {submittingPOC ? 'Submitting...' : 'Submit OASIS & POC for QA Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

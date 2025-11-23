@@ -47,6 +47,14 @@ export const getOasisAssessmentsByPatient = async (patientId) => {
 };
 
 /**
+ * Get my rejected assessments (for RN/PT users)
+ */
+export const getMyRejectedAssessments = async () => {
+  const response = await api.get(`${OASIS_BASE_URL}/my/rejected`);
+  return response.data;
+};
+
+/**
  * Submit OASIS assessment for QA review
  */
 export const submitOasisForQA = async (id) => {
@@ -210,6 +218,7 @@ export default {
   autoSaveOasisAssessment,
   getOasisAssessment,
   getOasisAssessmentsByPatient,
+  getMyRejectedAssessments,
   submitOasisForQA,
   reviewOasisAssessment,
   deleteOasisAssessment,
