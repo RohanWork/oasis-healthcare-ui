@@ -77,6 +77,13 @@ export const getIncompleteAssessments = async () => {
   return response.data;
 };
 
+// Get my rejected assessments (for RN/PT users)
+export const getMyRejectedAssessments = async () => {
+  const response = await api.get('/oasis/my/rejected');
+  // Return the data directly (it's already an array)
+  return response.data;
+};
+
 // Delete OASIS assessment
 export const deleteOasisAssessment = async (id) => {
   await api.delete(`/oasis/${id}`);

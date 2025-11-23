@@ -17,7 +17,7 @@ import './ScheduleCenter.css';
 
 const ScheduleCenter = () => {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   
   // State for patients
   const [patients, setPatients] = useState([]);
@@ -36,6 +36,7 @@ const ScheduleCenter = () => {
   // Tasks and calendar
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
+  const [oasisAssessments, setOasisAssessments] = useState([]); // For calendar display
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState('episode-manager');
   
@@ -70,6 +71,7 @@ const ScheduleCenter = () => {
   useEffect(() => {
     if (selectedPatient && selectedEpisode) {
       loadTasks();
+      loadOasisAssessments();
     }
   }, [selectedPatient, selectedEpisode]);
 
@@ -82,10 +84,8 @@ const ScheduleCenter = () => {
     try {
       const response = await patientAPI.getAll();
       setPatients(response.data);
-      if (response.data.length > 0 && !selectedPatient) {
-        setSelectedPatient(response.data[0]);
-        loadEpisodesForPatient(response.data[0].id);
-      }
+      // Don't auto-select first patient - user must explicitly select a patient
+      // Tasks will only load when a patient is selected
     } catch (error) {
       console.error('Error loading patients:', error);
       toast.error('Failed to load patients');
@@ -112,17 +112,54 @@ const ScheduleCenter = () => {
     
     setLoadingTasks(true);
     try {
-      const response = await taskAPI.getByPatient(selectedPatient.id);
-      // Filter tasks for the selected episode
-      const episodeTasks = response.data.filter(task => 
-        task.episodeId === selectedEpisode.id
-      );
-      setTasks(episodeTasks);
+      // For RN role, get only tasks assigned to current user
+      // For other roles, get all tasks for the patient
+      // Handle both string roles and object roles (with roleName property)
+      const isRN = user?.roles?.some(r => {
+        const roleName = typeof r === 'string' ? r : (r?.roleName || '');
+        return roleName.includes('RN') || roleName === 'ROLE_RN' || roleName === 'RN';
+      });
+      let response;
+      
+      if (isRN) {
+        // Get tasks assigned to current user
+        response = await taskAPI.getMyTasks();
+        // Filter by patient and episode
+        const episodeTasks = response.data.filter(task => 
+          task.patientId === selectedPatient.id && 
+          task.episodeId === selectedEpisode.id
+        );
+        setTasks(episodeTasks);
+      } else {
+        // Get all tasks for the patient
+        response = await taskAPI.getByPatient(selectedPatient.id);
+        // Filter tasks for the selected episode
+        const episodeTasks = response.data.filter(task => 
+          task.episodeId === selectedEpisode.id
+        );
+        setTasks(episodeTasks);
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast.error('Failed to load tasks');
     } finally {
       setLoadingTasks(false);
+    }
+  };
+
+  const loadOasisAssessments = async () => {
+    if (!selectedPatient) return;
+    
+    try {
+      const assessments = await getOasisAssessmentsByPatient(selectedPatient.id);
+      // Filter by episode if selectedEpisode exists
+      const episodeAssessments = selectedEpisode 
+        ? assessments.filter(a => a.episodeId === selectedEpisode.id)
+        : assessments;
+      setOasisAssessments(episodeAssessments);
+    } catch (error) {
+      console.error('Error loading OASIS assessments:', error);
+      // Don't show error toast - OASIS assessments are optional for calendar
     }
   };
 
@@ -177,15 +214,26 @@ const ScheduleCenter = () => {
         return 'green';
       case 'SCHEDULED':
       case 'PENDING':
-        return 'blue';
+      case 'IN_PROGRESS':
+        return 'purple';
       case 'MISSED':
       case 'CANCELLED':
         return 'red';
-      case 'IN_PROGRESS':
-        return 'orange';
       default:
         return 'gray';
     }
+  };
+
+  // Check if a task is missed (scheduled in the past but not completed)
+  const isTaskMissed = (task) => {
+    if (task.status === 'COMPLETED' || task.status === 'CANCELLED') {
+      return false;
+    }
+    const taskDate = new Date(task.scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate < today;
   };
 
   const getCalendarDateStatus = (date) => {
@@ -195,9 +243,64 @@ const ScheduleCenter = () => {
       return taskDate === dateStr;
     });
 
-    if (dayTasks.length === 0) return null;
-    if (dayTasks.length > 1) return 'multiple';
+    // Check for completed OASIS assessments on this date
+    const dayOasis = oasisAssessments.filter(assessment => {
+      if (assessment.status === 'COMPLETED' && assessment.assessmentDate) {
+        const assessmentDate = new Date(assessment.assessmentDate).toISOString().split('T')[0];
+        return assessmentDate === dateStr;
+      }
+      return false;
+    });
+
+    if (dayTasks.length === 0) {
+      // If no tasks but has completed OASIS, show green
+      if (dayOasis.length > 0) {
+        return 'green';
+      }
+      return null;
+    }
+
+    // Check for missed tasks (highest priority - red)
+    const missedTasks = dayTasks.filter(task => 
+      task.status === 'MISSED' || isTaskMissed(task)
+    );
+    if (missedTasks.length > 0) {
+      return 'red';
+    }
+
+    // Check for cancelled tasks (red)
+    const cancelledTasks = dayTasks.filter(task => task.status === 'CANCELLED');
+    if (cancelledTasks.length > 0 && dayTasks.every(t => t.status === 'CANCELLED')) {
+      return 'red';
+    }
+
+    // Check if all tasks are completed (green)
+    const allCompleted = dayTasks.every(task => task.status === 'COMPLETED');
+    if (allCompleted) {
+      return 'green';
+    }
+
+    // If there are completed OASIS assessments along with tasks, prioritize green
+    if (dayOasis.length > 0) {
+      return 'green';
+    }
+
+    // If there are pending/scheduled tasks (purple)
+    const hasPendingTasks = dayTasks.some(task => 
+      task.status === 'SCHEDULED' || 
+      task.status === 'PENDING' || 
+      task.status === 'IN_PROGRESS'
+    );
+    if (hasPendingTasks) {
+      return 'purple';
+    }
+
+    // Default: if multiple tasks with mixed statuses, show purple
+    if (dayTasks.length > 1) {
+      return 'purple';
+    }
     
+    // Single task - use its status color
     const task = dayTasks[0];
     return getTaskStatusColor(task.status);
   };
@@ -225,15 +328,30 @@ const ScheduleCenter = () => {
         const taskDate = new Date(task.scheduledDate).toISOString().split('T')[0];
         return taskDate === date.toISOString().split('T')[0];
       });
+      const dayOasis = oasisAssessments.filter(assessment => {
+        if (assessment.status === 'COMPLETED' && assessment.assessmentDate) {
+          const assessmentDate = new Date(assessment.assessmentDate).toISOString().split('T')[0];
+          return assessmentDate === date.toISOString().split('T')[0];
+        }
+        return false;
+      });
 
       days.push(
         <div
           key={day}
           className={`calendar-day ${status ? `status-${status}` : ''}`}
-          title={dayTasks.length > 0 ? `${dayTasks.length} task(s)` : ''}
+          title={
+            dayOasis.length > 0 
+              ? `${dayOasis.length} completed OASIS, ${dayTasks.length} task(s)`
+              : dayTasks.length > 0 
+                ? `${dayTasks.length} task(s)` 
+                : ''
+          }
         >
           <span className="day-number">{day}</span>
-          {dayTasks.length > 1 && <span className="task-count">{dayTasks.length}</span>}
+          {(dayTasks.length + dayOasis.length) > 1 && (
+            <span className="task-count">{dayTasks.length + dayOasis.length}</span>
+          )}
         </div>
       );
     }
@@ -321,22 +439,40 @@ const ScheduleCenter = () => {
     try {
       // Check if OASIS assessment already exists for this episode
       const assessments = await getOasisAssessmentsByPatient(selectedPatient.id);
-      const episodeAssessment = assessments.find(
-        a => a.episodeId === task.episodeId && 
-        (a.assessmentType === 'SOC' || a.assessmentType === 'ROC')
-      );
+      
+      // Find assessment for this specific episode
+      // Check for any assessment (DRAFT, SUBMITTED, APPROVED, REJECTED, COMPLETED)
+      const taskEpisodeId = parseInt(task.episodeId);
+      const episodeAssessment = assessments.find(a => {
+        const aEpisodeId = a.episodeId || (a.episode && a.episode.id);
+        const aEpisodeIdNum = typeof aEpisodeId === 'string' ? parseInt(aEpisodeId) : aEpisodeId;
+        return aEpisodeIdNum === taskEpisodeId;
+      });
+      
+      console.log('Looking for assessment with episodeId:', taskEpisodeId);
+      console.log('Available assessments:', assessments.map(a => ({ 
+        id: a.id, 
+        status: a.status, 
+        episodeId: a.episodeId || (a.episode && a.episode.id) 
+      })));
 
       if (episodeAssessment) {
-        // Navigate to existing assessment
-        navigate(`/oasis-complete/${episodeAssessment.id}`);
+        // Navigate to existing assessment using the working route format
+        console.log('Found existing OASIS assessment:', episodeAssessment.id, episodeAssessment.status);
+        // Use the old form route format that works: /oasis/edit/:id/:patientId
+        navigate(`/oasis/edit/${episodeAssessment.id}/${selectedPatient.id}`);
       } else {
-        // Create new OASIS assessment
+        // No existing assessment found, use old form route for new assessment
+        console.log('No existing OASIS assessment found, creating new one');
         toast.info('Creating new OASIS assessment...');
-        navigate(`/oasis-complete/new?episodeId=${task.episodeId}&patientId=${selectedPatient.id}&taskId=${task.id}`);
+        // Use the old form route: /oasis/new/:patientId
+        navigate(`/oasis/new/${selectedPatient.id}`);
       }
     } catch (error) {
       console.error('Error opening OASIS:', error);
       toast.error('Failed to open OASIS assessment');
+      // On error, still navigate to create new assessment
+      navigate(`/oasis-complete/new?episodeId=${task.episodeId}&patientId=${selectedPatient.id}&taskId=${task.id}`);
     }
   };
 
@@ -668,24 +804,16 @@ const ScheduleCenter = () => {
             {/* Color Legend */}
             <div className="calendar-legend">
               <div className="legend-item">
-                <div className="legend-color status-blue"></div>
-                <span>Scheduled</span>
-              </div>
-              <div className="legend-item">
                 <div className="legend-color status-green"></div>
                 <span>Completed</span>
               </div>
               <div className="legend-item">
+                <div className="legend-color status-purple"></div>
+                <span>Pending/Scheduled</span>
+              </div>
+              <div className="legend-item">
                 <div className="legend-color status-red"></div>
                 <span>Missed</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-color status-purple"></div>
-                <span>Multiple</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-color status-gray"></div>
-                <span>Disabled</span>
               </div>
             </div>
           </div>

@@ -220,12 +220,24 @@ const PlanOfCareForm = () => {
 
     setLoading(true);
     try {
-      // Prepare data - convert empty strings to null
+      // Prepare data - convert empty strings to null and ensure proper types
       const dataToSend = {
         ...formData,
+        // Ensure patientId and episodeId are numbers
+        patientId: formData.patientId ? (typeof formData.patientId === 'string' ? parseInt(formData.patientId, 10) : formData.patientId) : null,
+        episodeId: formData.episodeId ? (typeof formData.episodeId === 'string' ? parseInt(formData.episodeId, 10) : formData.episodeId) : null,
+        oasisAssessmentId: formData.oasisAssessmentId ? (typeof formData.oasisAssessmentId === 'string' ? parseInt(formData.oasisAssessmentId, 10) : formData.oasisAssessmentId) : null,
         certificationPeriodDays: formData.certificationPeriodDays ? parseInt(formData.certificationPeriodDays) : null,
         physicianSignedDate: formData.physicianSignedDate || null,
         endDate: formData.endDate || null,
+        // Convert frequency fields to proper types
+        frequencies: formData.frequencies ? formData.frequencies.map(freq => ({
+          ...freq,
+          visitsPerWeek: typeof freq.visitsPerWeek === 'string' ? parseInt(freq.visitsPerWeek) : freq.visitsPerWeek,
+          numberOfWeeks: typeof freq.numberOfWeeks === 'string' ? parseInt(freq.numberOfWeeks) : freq.numberOfWeeks,
+          totalVisits: typeof freq.totalVisits === 'string' ? parseInt(freq.totalVisits) : freq.totalVisits,
+          estimatedMinutesPerVisit: typeof freq.estimatedMinutesPerVisit === 'string' ? parseInt(freq.estimatedMinutesPerVisit) : freq.estimatedMinutesPerVisit,
+        })) : [],
       };
 
       if (isEditMode) {
@@ -238,7 +250,22 @@ const PlanOfCareForm = () => {
       navigate('/plan-of-care');
     } catch (error) {
       console.error('Error saving POC:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to save Plan of Care';
+      console.error('Error response:', error.response?.data);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to save Plan of Care';
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.errors) {
+          // Validation errors with field details
+          const errorDetails = Object.entries(errorData.errors)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join(', ');
+          errorMessage = `Validation errors: ${errorDetails}`;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      }
       toast.error(errorMessage);
     } finally {
       setLoading(false);

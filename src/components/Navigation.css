@@ -11,6 +11,7 @@
   z-index: 1000;
   display: flex;
   align-items: center;
+  overflow: visible;
 }
 
 .navbar-content {
@@ -21,6 +22,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  overflow: visible;
+  position: relative;
 }
 
 .navbar-left {
@@ -29,6 +32,9 @@
   gap: 16px;
   flex: 1;
   overflow-x: auto;
+  overflow-y: visible;
+  overflow: visible;
+  position: relative;
 }
 
 .menu-toggle {
@@ -103,6 +109,66 @@
 
 .navbar-btn.active {
   background: rgba(255, 255, 255, 0.3);
+  font-weight: 600;
+}
+
+/* Navbar Dropdown */
+.navbar-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 1001;
+}
+
+/* Bridge the gap between button and menu to prevent mouse leave */
+.navbar-dropdown::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: transparent;
+  z-index: 10000;
+}
+
+.navbar-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  min-width: 200px;
+  z-index: 10001;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.navbar-dropdown-item {
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: block;
+}
+
+.navbar-dropdown-item:hover {
+  background-color: #f3f4f6;
+  color: #2563eb;
+}
+
+.navbar-dropdown-item.active {
+  background-color: #e0e7ff;
+  color: #2563eb;
   font-weight: 600;
 }
 

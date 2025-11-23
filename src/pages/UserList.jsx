@@ -20,7 +20,25 @@ const UserList = () => {
     try {
       setLoading(true);
       const response = await userAPI.getAll();
-      setUsers(response.data || []);
+      let usersList = response.data || [];
+      
+      // Additional client-side filtering: Remove SYSTEM_ADMIN users if current user is not SYSTEM_ADMIN
+      const currentUserIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || hasRole('SYSTEM_ADMIN');
+      if (!currentUserIsSystemAdmin) {
+        const filtered = usersList.filter(user => {
+          const isSystemAdmin = user.roles?.some(r => 
+            r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN'
+          );
+          if (isSystemAdmin) {
+            console.log('Filtering out SYSTEM_ADMIN user:', user.username);
+          }
+          return !isSystemAdmin;
+        });
+        console.log(`Filtered ${usersList.length - filtered.length} SYSTEM_ADMIN users. Showing ${filtered.length} users.`);
+        usersList = filtered;
+      }
+      
+      setUsers(usersList);
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Failed to load users');
@@ -165,24 +183,39 @@ const UserList = () => {
                       >
                         <Eye size={18} />
                       </button>
-                      {(hasPermission('USER_UPDATE') || hasRole('SYSTEM_ADMIN') || hasRole('ORG_ADMIN')) && (
-                        <button
-                          className="btn-icon btn-edit"
-                          onClick={() => handleEdit(user.id)}
-                          title="Edit"
-                        >
-                          <Edit size={18} />
-                        </button>
-                      )}
-                      {(hasPermission('USER_DELETE') || hasRole('SYSTEM_ADMIN')) && (
-                        <button
-                          className="btn-icon btn-delete"
-                          onClick={() => handleDelete(user.id)}
-                          title="Delete"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
+                      {(() => {
+                        const currentUserIsSystemAdmin = hasRole('ROLE_SYSTEM_ADMIN') || hasRole('SYSTEM_ADMIN');
+                        const targetUserIsSystemAdmin = user.roles?.some(r => 
+                          r.roleName === 'ROLE_SYSTEM_ADMIN' || r.roleName === 'SYSTEM_ADMIN'
+                        );
+                        const canEdit = (hasPermission('USER_UPDATE') || hasRole('ROLE_SYSTEM_ADMIN') || hasRole('ROLE_ORG_ADMIN') || hasRole('SYSTEM_ADMIN') || hasRole('ORG_ADMIN')) 
+                          && (currentUserIsSystemAdmin || !targetUserIsSystemAdmin);
+                        const canDelete = (hasPermission('USER_DELETE') || hasRole('ROLE_SYSTEM_ADMIN') || hasRole('SYSTEM_ADMIN')) 
+                          && (currentUserIsSystemAdmin || !targetUserIsSystemAdmin);
+                        
+                        return (
+                          <>
+                            {canEdit && (
+                              <button
+                                className="btn-icon btn-edit"
+                                onClick={() => handleEdit(user.id)}
+                                title="Edit"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                className="btn-icon btn-delete"
+                                onClick={() => handleDelete(user.id)}
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </td>
                 </tr>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { patientAPI } from '../services/patientAPI';
 import { userAPI } from '../services/userAPI';
+import { referralAPI } from '../services/referralAPI';
 import { User, Save, X, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 import './PatientForm.css';
@@ -74,6 +75,12 @@ const PatientForm = () => {
     loadClinicians();
     if (isEditMode) {
       loadPatient();
+    } else {
+      // Check if we're creating from a referral
+      const referralId = new URLSearchParams(window.location.search).get('referralId');
+      if (referralId) {
+        loadReferralData(referralId);
+      }
     }
   }, [id]);
 
@@ -87,6 +94,71 @@ const PatientForm = () => {
       // Don't show error toast - this is not critical for form submission
     } finally {
       setLoadingClinicians(false);
+    }
+  };
+
+  const loadReferralData = async (referralId) => {
+    try {
+      setLoading(true);
+      const response = await referralAPI.getById(referralId);
+      const referral = response.data;
+      
+      // Map referral data to patient form data
+      setFormData(prev => ({
+        ...prev,
+        // Personal Information
+        firstName: referral.patientFirstName || '',
+        middleName: referral.patientMiddleName || '',
+        lastName: referral.patientLastName || '',
+        dateOfBirth: referral.patientDateOfBirth ? referral.patientDateOfBirth.split('T')[0] : '',
+        gender: referral.patientGender || 'MALE',
+        ssn: referral.patientSsn || '',
+        maritalStatus: referral.patientMaritalStatus || 'SINGLE',
+        race: referral.patientRace || '',
+        ethnicity: referral.patientEthnicity || '',
+        language: referral.patientLanguage || 'English',
+        
+        // Contact Information
+        phoneNumber: referral.patientPhoneNumber || '',
+        mobileNumber: referral.patientMobileNumber || '',
+        email: referral.patientEmail || '',
+        
+        // Address
+        addressLine1: referral.patientAddressLine1 || '',
+        addressLine2: referral.patientAddressLine2 || '',
+        city: referral.patientCity || '',
+        state: referral.patientState || '',
+        zipCode: referral.patientZipCode || '',
+        county: referral.patientCounty || '',
+        
+        // Emergency Contact
+        emergencyContactName: referral.emergencyContactName || '',
+        emergencyContactRelationship: referral.emergencyContactRelationship || '',
+        emergencyContactPhone: referral.emergencyContactPhone || '',
+        
+        // Physician Information
+        primaryPhysicianName: referral.primaryPhysicianName || '',
+        primaryPhysicianPhone: referral.primaryPhysicianPhone || '',
+        primaryPhysicianNpi: referral.primaryPhysicianNpi || '',
+        
+        // Referral Information
+        referralSource: referral.referralSource || '',
+        referralDate: referral.referralDate ? referral.referralDate.split('T')[0] : '',
+        referralDiagnosis: referral.primaryDiagnosis || '',
+        
+        // Clinical Information
+        allergies: referral.allergies || '',
+        medications: referral.currentMedications || '',
+        medicalHistory: referral.medicalHistory || '',
+        specialInstructions: referral.specialInstructions || '',
+      }));
+      
+      toast.success('Referral data loaded successfully');
+    } catch (error) {
+      console.error('Error loading referral data:', error);
+      toast.error('Failed to load referral data');
+    } finally {
+      setLoading(false);
     }
   };
 
