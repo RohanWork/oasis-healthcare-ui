@@ -1,0 +1,368 @@
+.task-list-container {
+  padding: 2rem;
+  background-color: var(--background-light, #f8f9fa);
+  min-height: calc(100vh - 60px);
+}
+
+.task-list-container .header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.task-list-container .list-title {
+  font-size: 2rem;
+  color: var(--text-primary, #2c3e50);
+  margin: 0;
+}
+
+.task-list-container .action-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.task-list-container .btn {
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.task-list-container .btn-primary {
+  background-color: var(--primary-color, #3498db);
+  color: white;
+}
+
+.task-list-container .btn-primary:hover {
+  background-color: var(--primary-dark, #2980b9);
+}
+
+.task-list-container .btn-secondary {
+  background-color: white;
+  color: var(--text-primary, #2c3e50);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.task-list-container .btn-secondary:hover {
+  background-color: var(--background-hover, #f1f1f1);
+}
+
+/* Filters */
+.filters-container {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  background-color: white;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+.filter-select {
+  padding: 0.6rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary-color, #3498db);
+}
+
+/* Task Stats */
+.task-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background-color: white;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-left: 4px solid var(--primary-color, #3498db);
+}
+
+.stat-card.stat-overdue {
+  border-left-color: var(--danger-color, #e74c3c);
+}
+
+.stat-card.stat-overdue h3 {
+  color: var(--danger-color, #e74c3c);
+}
+
+.stat-card.stat-completed {
+  border-left-color: var(--success-color, #27ae60);
+}
+
+.stat-card.stat-completed h3 {
+  color: var(--success-color, #27ae60);
+}
+
+.stat-card h3 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--text-primary, #2c3e50);
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+/* Task Cards Grid */
+.task-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.25rem;
+}
+
+.task-card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-left: 5px solid transparent;
+}
+
+.task-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.task-card.overdue-card {
+  border-left-color: var(--danger-color, #e74c3c);
+  background-color: #fff5f5;
+}
+
+.task-card.status-scheduled { border-left-color: var(--info-color, #3498db); }
+.task-card.status-pending { border-left-color: var(--warning-color, #f39c12); }
+.task-card.status-completed { border-left-color: var(--success-color, #27ae60); }
+.task-card.status-cancelled { border-left-color: var(--text-secondary, #95a5a6); }
+.task-card.status-rescheduled { border-left-color: var(--warning-color, #f39c12); }
+.task-card.status-missed { border-left-color: var(--danger-color, #e74c3c); }
+.task-card.status-in-progress { border-left-color: var(--primary-color, #9b59b6); }
+
+/* Task Card Header */
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.task-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.task-header-left h3 {
+  font-size: 1.125rem;
+  color: var(--text-primary, #2c3e50);
+  margin: 0;
+  font-weight: 600;
+}
+
+.icon-urgent { color: var(--danger-color, #e74c3c); }
+.icon-high { color: var(--warning-color, #f39c12); }
+.icon-normal { color: var(--text-secondary, #95a5a6); }
+
+.status-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: white;
+  white-space: nowrap;
+}
+
+.status-badge.status-scheduled { background-color: var(--info-color, #3498db); }
+.status-badge.status-pending { background-color: var(--warning-color, #f39c12); }
+.status-badge.status-completed { background-color: var(--success-color, #27ae60); }
+.status-badge.status-cancelled { background-color: var(--text-secondary, #95a5a6); }
+.status-badge.status-rescheduled { background-color: var(--warning-color, #f39c12); }
+.status-badge.status-missed { background-color: var(--danger-color, #e74c3c); }
+.status-badge.status-in-progress { background-color: var(--primary-color, #9b59b6); }
+
+/* Task Card Body */
+.task-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.task-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+.task-info-row svg {
+  flex-shrink: 0;
+  color: var(--text-secondary, #95a5a6);
+}
+
+.task-location {
+  color: var(--text-primary, #2c3e50);
+  font-weight: 500;
+}
+
+.task-special-instructions {
+  padding: 0.75rem;
+  background-color: var(--background-light, #f8f9fa);
+  border-radius: 0.375rem;
+  border-left: 3px solid var(--primary-color, #3498db);
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+.task-special-instructions strong {
+  color: var(--text-primary, #2c3e50);
+}
+
+/* Task Card Actions */
+.task-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color, #e9ecef);
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--text-secondary, #6c757d);
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  color: var(--primary-color, #3498db);
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.btn-icon.btn-complete {
+  color: var(--success-color, #27ae60);
+}
+
+.btn-icon.btn-complete:hover {
+  background-color: rgba(39, 174, 96, 0.1);
+}
+
+.btn-icon.btn-cancel {
+  color: var(--warning-color, #f39c12);
+}
+
+.btn-icon.btn-cancel:hover {
+  background-color: rgba(243, 156, 18, 0.1);
+}
+
+.btn-icon.btn-delete {
+  color: var(--danger-color, #e74c3c);
+}
+
+.btn-icon.btn-delete:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.btn-icon.btn-primary {
+  color: var(--primary-color, #3498db);
+}
+
+.btn-icon.btn-primary:hover {
+  background-color: rgba(52, 152, 219, 0.15);
+  color: var(--primary-dark, #2980b9);
+}
+
+/* Loading & Empty States */
+.loading-spinner {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.125rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+.no-records {
+  text-align: center;
+  font-size: 1.125rem;
+  color: var(--text-secondary, #6c757d);
+  padding: 3rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .task-list-container {
+    padding: 1rem;
+  }
+
+  .task-list-container .list-title {
+    font-size: 1.5rem;
+  }
+
+  .filters-container {
+    flex-direction: column;
+  }
+
+  .filter-group {
+    min-width: 100%;
+  }
+
+  .task-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .task-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

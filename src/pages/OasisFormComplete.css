@@ -1,0 +1,608 @@
+/**
+ * Complete OASIS-E1 Form Styles
+ * Modern, professional design for clinical documentation
+ */
+
+.oasis-form-complete {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding-bottom: 80px;
+}
+
+/* Header */
+.oasis-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.oasis-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.header-info {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.header-info span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Progress Bar */
+.progress-container {
+  background: white;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #e0e7ff;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+  border-radius: 6px;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-align: center;
+}
+
+.auto-save-message {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #48bb78;
+  margin-top: 0.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Main Content Layout */
+.oasis-content {
+  display: flex;
+  gap: 2rem;
+  max-width: 1600px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+}
+
+/* Left Navigation */
+.oasis-navigation {
+  width: 320px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  height: fit-content;
+  position: sticky;
+  top: 120px;
+}
+
+.oasis-navigation h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.oasis-navigation ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.oasis-navigation li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.oasis-navigation li:hover {
+  background: #f7fafc;
+  color: #667eea;
+  transform: translateX(4px);
+}
+
+.oasis-navigation li.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.section-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.section-name {
+  flex: 1;
+  line-height: 1.3;
+}
+
+/* Right Content Area */
+.oasis-form-content {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 2.5rem;
+  min-height: 600px;
+}
+
+/* Section Styles */
+.oasis-section h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.75rem;
+  color: #2d3748;
+  font-weight: 600;
+  border-bottom: 3px solid #667eea;
+  padding-bottom: 0.75rem;
+}
+
+.section-description {
+  color: #718096;
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+
+.oasis-section h3 {
+  margin: 2rem 0 1rem 0;
+  font-size: 1.3rem;
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.oasis-section p {
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 1.75rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.form-group small {
+  display: block;
+  color: #718096;
+  font-weight: 400;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Checkbox Groups */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.checkbox-group label:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.checkbox-group input[type="checkbox"]:checked + strong {
+  color: #667eea;
+}
+
+/* GG Section Tables */
+.gg-table {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.gg-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.gg-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.gg-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.gg-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.gg-table tr:last-child td {
+  border-bottom: none;
+}
+
+.gg-table tr:hover {
+  background: #f7fafc;
+}
+
+.gg-table select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.gg-table select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.gg-table small {
+  display: block;
+  color: #718096;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
+/* Footer Actions */
+.oasis-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 1.25rem 2rem;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  z-index: 100;
+}
+
+.oasis-footer button {
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-secondary:hover {
+  background: #cbd5e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+/* Loading State */
+.oasis-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 1.2rem;
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* Skip Logic Indicator */
+.field-skipped {
+  opacity: 0.5;
+  pointer-events: none;
+  position: relative;
+}
+
+.field-skipped::after {
+  content: "Skipped based on previous answers";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.field-skipped:hover::after {
+  opacity: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .oasis-content {
+    flex-direction: column;
+  }
+
+  .oasis-navigation {
+    width: 100%;
+    position: static;
+  }
+
+  .oasis-navigation ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .oasis-header {
+    padding: 1.5rem;
+  }
+
+  .oasis-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-info {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .oasis-content {
+    padding: 0 1rem;
+  }
+
+  .oasis-form-content {
+    padding: 1.5rem;
+  }
+
+  .oasis-navigation ul {
+    grid-template-columns: 1fr;
+  }
+
+  .gg-table {
+    font-size: 0.85rem;
+  }
+
+  .oasis-footer {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .oasis-footer button {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .oasis-navigation,
+  .oasis-footer,
+  .progress-container {
+    display: none;
+  }
+
+  .oasis-form-content {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .oasis-section {
+    page-break-inside: avoid;
+  }
+}
+
+/* Accessibility */
+*:focus-visible {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Animation for section transitions */
+.oasis-section {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Validation Errors */
+.form-group.error input,
+.form-group.error select {
+  border-color: #f56565;
+}
+
+.error-message {
+  color: #f56565;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/* Success States */
+.form-group.success input,
+.form-group.success select {
+  border-color: #48bb78;
+}
+
+/* Info Boxes */
+.info-box {
+  background: #ebf8ff;
+  border-left: 4px solid #4299e1;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 6px;
+}
+
+.info-box p {
+  margin: 0;
+  color: #2c5282;
+  font-size: 0.9rem;
+}
+
+/* Warning Boxes */
+.warning-box {
+  background: #fffaf0;
+  border-left: 4px solid #ed8936;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 6px;
+}
+
+.warning-box p {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.9rem;
+}
+

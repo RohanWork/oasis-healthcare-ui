@@ -1,0 +1,240 @@
+/* OasisCompleteForm.css */
+
+.oasis-complete-container {
+  min-height: calc(100vh - 60px);
+  padding: 2rem;
+  background-color: var(--background-light);
+}
+
+.oasis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.oasis-header h3 {
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.oasis-progress {
+  width: 50%;
+  min-width: 300px;
+}
+
+.oasis-progress .progress {
+  height: 1.5rem;
+  background-color: var(--background-card);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.oasis-progress .progress-bar {
+  background: linear-gradient(90deg, var(--primary-color) 0%, var(--success-color) 100%);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.3s ease;
+}
+
+/* WRAPPER */
+.oasis-wrapper {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: visible;
+}
+
+/* SIDEBAR */
+.oasis-sidebar {
+  width: 240px;
+  background: #f8fafc;
+  border-right: 1px solid #e6eef6;
+  padding: 18px 12px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  position: sticky;
+  top: 96px;
+  height: calc(100vh - 120px);
+  -webkit-overflow-scrolling: touch;
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+.oasis-sidebar > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oasis-sidebar .nav-item {
+  margin-bottom: 10px;
+}
+
+.oasis-sidebar .nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(14, 20, 30, 0.06);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.oasis-sidebar .nav-badge {
+  flex-shrink: 0;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 700;
+  border: 1px solid rgba(14, 20, 30, 0.04);
+}
+
+.oasis-sidebar .nav-label {
+  white-space: normal;
+  word-break: break-word;
+  color: #0f172a;
+}
+
+.oasis-sidebar .nav-btn:hover {
+  transform: translateX(4px);
+  box-shadow: 0 6px 14px rgba(16, 24, 40, 0.06);
+  background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+}
+
+/* ACTIVE BUTTON */
+.oasis-sidebar .nav-btn.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.oasis-sidebar .nav-btn.active:hover {
+  background: #1e40af !important;
+}
+
+.oasis-sidebar .nav-btn.active .nav-badge {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.oasis-sidebar .nav-btn.active *,
+.oasis-sidebar .nav-btn.active .nav-label,
+.oasis-sidebar .nav-btn.active span {
+  color: #ffffff !important;
+}
+
+.oasis-sidebar .nav-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+/* CONTENT */
+.oasis-content {
+  flex: 1 1 auto;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+  box-sizing: border-box;
+}
+
+/* STICKY FOOTER */
+.sticky-actions {
+  border-top: 1px solid #ddd;
+  padding: 15px;
+  background: white;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* SECTION STYLES */
+.section-a,
+.section-b,
+.section-c,
+.section-d,
+.section-e,
+.section-f,
+.section-g,
+.section-gg,
+.section-h,
+.section-i,
+.section-j,
+.section-k,
+.section-m,
+.section-n,
+.section-o,
+.section-q,
+.section-summary {
+  padding-bottom: 80px;
+}
+
+/* INPUTS */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="checkbox"],
+select,
+textarea {
+  border: 1px solid #4a90e2 !important;
+  border-radius: 4px !important;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .oasis-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    top: auto;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px;
+  }
+  
+  .oasis-sidebar > ul {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .oasis-sidebar .nav-item {
+    margin: 0;
+  }
+  
+  .oasis-sidebar .nav-btn {
+    min-width: 150px;
+    white-space: nowrap;
+  }
+}
+
